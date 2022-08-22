@@ -1,0 +1,68 @@
+# Values file for vaul-helm chart.
+global:
+  tlsDisable: false
+
+injector:
+  enabled: false
+
+server:
+  image:
+    repository: docker.mirror.hashicorp.services/hashicorp/vault-enterprise
+    tag: 1.7.0_ent
+  volumes:
+  - name: vault-server-tls
+    secret:
+      secretName: vault-server-tls
+  - name: vault-bootstrap
+    configMap:
+      name: vault-bootstrap
+  volumeMounts:
+  - name: vault-server-tls
+    mountPath: /mnt/tls
+    readOnly: true
+  - name: vault-bootstrap
+    mountPath: /mnt/bootstrap
+    readOnly: true
+
+  extraEnvironmentVars:
+    # Ensure that running vault commands in the pod uses the correct CA.
+    VAULT_CACERT: /mnt/tls/ca.crt
+
+  standalone:
+    enabled: true
+    config: |
+      listener "tcp" {
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+        tls_cert_file = "/mnt/tls/server.crt"
+        tls_key_file = "/mnt/tls/server.key"
+        tls_client_ca_file = "/mnt/tls/ca.crt"
+      }
+      storage "inmem" {
+      }
+
+  readinessProbe:
+    path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
+
+csi:
+  enabled: true
+  debug: true
+  extraArgs:
+    - -vault-addr=https://vault:8200
+    - -vault-tls-ca-cert=/mnt/tls/ca.crt
+    - -vault-tls-client-cert=/mnt/tls/client.crt
+    - -vault-tls-client-key=/mnt/tls/client.key
+
+  image:
+    repository: "e2e/vault-csi-provider"
+    tag: "latest"
+    pullPolicy: Never
+
+  volumes:
+  - name: vault-client-tls
+    secret:
+      secretName: vault-client-tls
+  volumeMounts:
+  - name: vault-client-tls
+    mountPath: /mnt/tls
+    readOnly: true

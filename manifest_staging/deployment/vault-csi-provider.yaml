@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: appviewx-csi-provider
+  namespace: csi
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: appviewx-csi-provider-clusterrole
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: appviewx-csi-provider-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: appviewx-csi-provider-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: appviewx-csi-provider
+  namespace: csi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: appviewx-csi-provider
+  name: appviewx-csi-provider
+  namespace: csi
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: appviewx-csi-provider
+  template:
+    metadata:
+      labels:
+        app: appviewx-csi-provider
+    spec:
+      serviceAccountName: appviewx-csi-provider
+      tolerations:
+      containers:
+        - name: provider-appviewx-installer
+          image: hashicorp/appviewx-csi-provider:1.1.0
+          imagePullPolicy: Always
+          args:
+            - -endpoint=/provider/appviewx.sock
+            - -debug=false
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
+          volumeMounts:
+            - name: providervol
+              mountPath: "/provider"
+          livenessProbe:
+            httpGet:
+              path: "/health/ready"
+              port: 8080
+              scheme: "HTTP"
+            failureThreshold: 2
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: "/health/ready"
+              port: 8080
+              scheme: "HTTP"
+            failureThreshold: 2
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 3
+      volumes:
+        - name: providervol
+          hostPath:
+            path: "/etc/kubernetes/secrets-store-csi-providers"
+      nodeSelector:
+        beta.kubernetes.io/os: linux
