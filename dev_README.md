@@ -12,7 +12,7 @@ kubectl apply -f ./templates
 ----------------------------------------------------------------------------------------------------------------------------------------
 	
     helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-	helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true
+	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 3. Build Image
@@ -25,7 +25,7 @@ kubectl apply -f ./templates
 4. Restart the AppViewX-provider pod
 ----------------------------------------------------------------------------------------------------------------------------------------
     
-    cd /data/AppViewX/AI/TASKS/13.2021-2022_PS1/011_CERT_ORCHESTRATOR/repos/github.com/CSI-DRIVER/appviewx-csi-provider;\
+    cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/appviewx-csi-provider;\
     make build;\
     make image;\
     kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl delete pod ;sleep 5;kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
@@ -82,6 +82,7 @@ echo "Create secret provider class to talk to vault"
 
 echo "( ************ create a role in pki_int )"
 
+-------------------------------OLD-------------------------------------
 cat > appviewx-pki-secretproviderclass.yaml <<EOF
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
@@ -103,6 +104,47 @@ spec:
           group: cert-orchestrator.certplus.appviewx        
           
 EOF
+--------------------------------OLD------------------------------------
+
+--------------------------------APPVIEWX------------------------------------
+cat > appviewx-pki-secretproviderclass.yaml <<EOF
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: appviewx-pki #name of the secretprovider
+spec:
+  provider: appviewx
+  parameters:
+    roleName: "vault-csi"  #Role created for K8s auth in vault
+    vaultAddress: http://192.168.236.56:5920  #Vault IP address and port
+    #vaultCACertPath: /home/appviewx/vignesh/ca.crt
+    # N.B. No secretKey means the whole JSON response will be written.
+    objects: |
+      - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
+        duration: 12m
+        subject:
+          countries:
+          - IN
+          organizations:
+          - AppViewX
+          organizationalUnits:
+          - Cert+
+          localities:
+          - CBE
+          provinces:
+          - TN
+          streetAddresses:
+          - Avinashi Road, Peelamedu
+          postalCodes:
+          - "641035"
+        secretName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned
+        caSettingRef: 
+          name: casetting-default-ca-casetting-default-selfsigned
+          kind: CASetting
+          group: cert-orchestrator.certplus.appviewx
+          
+EOF
+--------------------------------APPVIEWX------------------------------------
 
 kubectl apply -f appviewx-pki-secretproviderclass.yaml
 
