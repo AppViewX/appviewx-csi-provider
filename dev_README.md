@@ -1,5 +1,32 @@
 ------------------------------------------------------------------------------------------------------------------------
 Start cert-orchestrator
+
+W1- cert-orchestrator-install
+      R1-C1 - run
+          cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/cert-orchestrator/dev/commands/run
+          ./all.sh
+          ./pod_all.sh
+        
+      R1-C2 - config
+          cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/cert-orchestrator/config/samples
+
+      R2 - logs
+          cd /tmp
+          kubectl logs   $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager > /tmp/cert-orchestrator/log.txt && kubectl logs  -f $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager >> /tmp/cert-orchestrator/log.txt;
+      
+      R3 - logs          
+          cd /tmp/;tail -f ./cert-orchestrator/log.txt
+
+W2 - cert-orchestrator-watch
+      R1-C1 - pods
+          watch kubectl get pods -A
+      R1-C2 - certs
+          watch kubectl get certs -A
+      R2-C1 - secrets
+          watch "kubetl get secrets -A | grep provider"
+      R3-c2 - certreq
+          watch kubectl get certreq -A
+
 ------------------------------------------------------------------------------------------------------------------------
 1. Install AppViewX Provider
 ------------------------------------------------------------------------------------------------------------------------
@@ -31,7 +58,7 @@ kubectl apply -f ./templates
     kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl delete pod ;sleep 5;kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
 
 ----------------------------------------------------------------------------------------------------------------------------------------
-5. Install all
+5. Install all ( appviewx-provider-install )
 ----------------------------------------------------------------------------------------------------------------------------------------
 
 cd /tmp
@@ -177,8 +204,19 @@ EOF
 kubectl apply -f webapp-pod.yaml
 
 ----------------------------------------------------------------------------------------------------------------------------------------
-5. Restart web
+5. Restart web ( appviewx-provider-run )
 ----------------------------------------------------------------------------------------------------------------------------------------
+    R1-C1 - pods
+      kubectl get pods -A
+
+    R1-C2 - restart web
+      cd /tm
+      kubectl delete pod webapp --force;kubectl apply -f ./webapp-pod.yaml
+
+    R2 - logs
+      cd /tmp
+      kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
+
     
     kubectl delete pod webapp --force;kubectl apply -f webapp-pod.yaml
 
