@@ -3,6 +3,7 @@ module github.com/AppViewX/appviewx-csi-provider
 go 1.13
 
 require (
+	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/vault/api v1.2.0
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect

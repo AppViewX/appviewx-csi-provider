@@ -170,7 +170,8 @@ spec:
           name: casetting-default-ca-casetting-default-selfsigned
           kind: CASetting
           group: cert-orchestrator.certplus.appviewx
-          
+        privateKey:
+          rotationPolicy: always          
 EOF
 --------------------------------APPVIEWX------------------------------------
 
@@ -184,7 +185,6 @@ apiVersion: v1
 metadata:
   name: webapp
 spec:
-  serviceAccountName: appviewx-auth # service account name created
   containers:
   - image: jweissig/app:0.0.1
     name: webapp

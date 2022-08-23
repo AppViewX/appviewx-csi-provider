@@ -5,11 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	v1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
-	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -30,48 +27,13 @@ type FlagsConfig struct {
 	Debug      bool
 	Version    bool
 	HealthAddr string
-
-	VaultAddr      string
-	VaultMount     string
-	VaultNamespace string
-
-	TLSCACertPath  string
-	TLSCADirectory string
-	TLSServerName  string
-	TLSClientCert  string
-	TLSClientKey   string
-	TLSSkipVerify  bool
 }
 
-func (fc FlagsConfig) TLSConfig() api.TLSConfig {
-	return api.TLSConfig{
-		CACert:        fc.TLSCACertPath,
-		CAPath:        fc.TLSCADirectory,
-		ClientCert:    fc.TLSClientCert,
-		ClientKey:     fc.TLSClientKey,
-		TLSServerName: fc.TLSServerName,
-		Insecure:      fc.TLSSkipVerify,
-	}
-}
-
-// Parameters stores the parameters specified in a mount request's `Attributes` field.
-// It consists of the parameters section from the SecretProviderClass being mounted
-// and pod metadata provided by the driver.
-//
-// Top-level values that aren't strings are not directly deserialisable because
-// they are defined as literal string types:
-// https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/0ba9810d41cc2dc336c68251d45ebac19f2e7f28/apis/v1alpha1/secretproviderclass_types.go#L59
-//
-// So we just deserialise by hand to avoid complexity and two passes.
 type Parameters struct {
-	VaultAddress             string
-	VaultRoleName            string
-	VaultKubernetesMountPath string
-	VaultNamespace           string
-	VaultTLSConfig           api.TLSConfig
-	CertSpecs                []v1.CertSpec
-	PodInfo                  PodInfo
-	Audience                 string
+	RoleName  string
+	CertSpecs []v1.CertSpec
+	PodInfo   PodInfo
+	Audience  string
 }
 
 type PodInfo struct {
@@ -120,28 +82,12 @@ func parseParameters(parametersStr string) (Parameters, error) {
 	}
 
 	var parameters Parameters
-	parameters.VaultRoleName = params["roleName"]
-	parameters.VaultAddress = params["vaultAddress"]
-	parameters.VaultNamespace = params["vaultNamespace"]
-	parameters.VaultTLSConfig.CACert = params["vaultCACertPath"]
-	parameters.VaultTLSConfig.CAPath = params["vaultCADirectory"]
-	parameters.VaultTLSConfig.TLSServerName = params["vaultTLSServerName"]
-	parameters.VaultTLSConfig.ClientCert = params["vaultTLSClientCertPath"]
-	parameters.VaultTLSConfig.ClientKey = params["vaultTLSClientKeyPath"]
-	parameters.VaultKubernetesMountPath = params["vaultKubernetesMountPath"]
+	parameters.RoleName = params["roleName"]
 	parameters.PodInfo.Name = params["csi.storage.k8s.io/pod.name"]
 	parameters.PodInfo.UID = types.UID(params["csi.storage.k8s.io/pod.uid"])
 	parameters.PodInfo.Namespace = params["csi.storage.k8s.io/pod.namespace"]
 	parameters.PodInfo.ServiceAccountName = params["csi.storage.k8s.io/serviceAccount.name"]
 	parameters.Audience = params["audience"]
-	if skipTLS, ok := params["vaultSkipTLSVerify"]; ok {
-		value, err := strconv.ParseBool(skipTLS)
-		if err == nil {
-			parameters.VaultTLSConfig.Insecure = value
-		} else {
-			return Parameters{}, err
-		}
-	}
 
 	secretsYaml := params["objects"]
 
@@ -172,27 +118,11 @@ func (c *Config) validate() error {
 	if c.TargetPath == "" {
 		return errors.New("missing target path field")
 	}
-	if c.Parameters.VaultRoleName == "" {
+	if c.Parameters.RoleName == "" {
 		return errors.New("missing 'roleName' in SecretProviderClass definition")
 	}
 	if len(c.Parameters.CertSpecs) == 0 {
 		return errors.New("no secrets configured - the provider will not read any secret material")
 	}
-
-	// objectNames := map[string]struct{}{}
-	conflicts := []string{}
-	// for _, secret := range c.Parameters.Secrets {
-	// 	if _, exists := objectNames[secret.ObjectName]; exists {
-	// 		conflicts = append(conflicts, secret.ObjectName)
-	// 	}
-
-	// 	objectNames[secret.ObjectName] = struct{}{}
-	// }
-
-	if len(conflicts) > 0 {
-		return fmt.Errorf("each `objectName` within a SecretProviderClass must be unique, "+
-			"but the following keys were duplicated: %s", strings.Join(conflicts, ", "))
-	}
-
 	return nil
 }
