@@ -23,7 +23,7 @@ W2 - cert-orchestrator-watch
       R1-C2 - certs
           watch kubectl get certs -A
       R2-C1 - secrets
-          watch "kubetl get secrets -A | grep provider"
+          watch "kubetl get secrets -A | grep cert-"
       R3-c2 - certreq
           watch kubectl get certreq -A
 
