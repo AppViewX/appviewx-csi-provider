@@ -8,7 +8,7 @@ ENV CGO_ENABLED=0
 # Leave the GOPATH
 WORKDIR /build
 COPY . ./
-RUN go build -trimpath -v -ldflags "-X 'main.gitCommit=8e4789c238e7bc97350d69df8a79f002643939e6' -X 'main.version=1.0_alpha' -X 'main.buildTime=$(date)'" -a -o appviewx-csi-provider
+RUN go build -trimpath -v -ldflags "-X 'main.gitCommit=8e4789c238e7bc97350d69df8a79f002643939e6' -X 'main.version=1.0_alpha.0' -X 'main.buildTime=$(date)'" -a -o appviewx-csi-provider
 
 # dev runs the binary from devbuild
 # -----------------------------------

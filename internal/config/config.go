@@ -115,12 +115,6 @@ func parseParameters(parametersStr string) (Parameters, error) {
 
 func (c *Config) validate() error {
 	// Some basic validation checks.
-	if c.TargetPath == "" {
-		return errors.New("missing target path field")
-	}
-	if c.Parameters.RoleName == "" {
-		return errors.New("missing 'roleName' in SecretProviderClass definition")
-	}
 	if len(c.Parameters.CertSpecs) == 0 {
 		return errors.New("no secrets configured - the provider will not read any secret material")
 	}

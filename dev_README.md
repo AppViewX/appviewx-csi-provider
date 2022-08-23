@@ -60,7 +60,7 @@ kubectl apply -f ./templates
 ----------------------------------------------------------------------------------------------------------------------------------------
 5. Install all ( appviewx-provider-install )
 ----------------------------------------------------------------------------------------------------------------------------------------
-
+<!-- 
 cd /tmp
 echo "Create Service Account"
 
@@ -107,7 +107,7 @@ echo "******* Setup PKI engine in vault -> \
 
 echo "Create secret provider class to talk to vault"
 
-echo "( ************ create a role in pki_int )"
+echo "( ************ create a role in pki_int )" -->
 
 -------------------------------OLD-------------------------------------
 cat > appviewx-pki-secretproviderclass.yaml <<EOF
@@ -142,10 +142,6 @@ metadata:
 spec:
   provider: appviewx
   parameters:
-    roleName: "vault-csi"  #Role created for K8s auth in vault
-    vaultAddress: http://192.168.236.56:5920  #Vault IP address and port
-    #vaultCACertPath: /home/appviewx/vignesh/ca.crt
-    # N.B. No secretKey means the whole JSON response will be written.
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
         duration: 5m
