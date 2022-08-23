@@ -39,7 +39,7 @@ kubectl apply -f ./templates
 ----------------------------------------------------------------------------------------------------------------------------------------
 	
     helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true
+	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 3. Build Image
@@ -148,7 +148,8 @@ spec:
     # N.B. No secretKey means the whole JSON response will be written.
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
-        duration: 12m
+        duration: 5m
+        renewBefore: 3m
         subject:
           countries:
           - IN

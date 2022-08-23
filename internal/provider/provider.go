@@ -32,6 +32,7 @@ import (
 	v1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
 	vaultclient "github.com/AppViewX/appviewx-csi-provider/internal/client"
 	"github.com/AppViewX/appviewx-csi-provider/internal/config"
+	"github.com/AppViewX/appviewx-csi-provider/internal/util"
 )
 
 var metricsAddr string
@@ -315,7 +316,9 @@ func createCertCRDs(
 	ctx context.Context,
 	l hclog.Logger,
 	certSpecs []v1.CertSpec,
-	podName, podNamespace string) ([]v1.Cert, error) {
+	podName, podNamespace string,
+	uid types.UID,
+) ([]v1.Cert, error) {
 
 	l.Info(fmt.Sprintf("Started Creation of Cert for Pod : Name : %s : Namespace : %s",
 		podName, podNamespace))
@@ -328,7 +331,15 @@ func createCertCRDs(
 		cert := certorchestratorv1.Cert{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:    podNamespace,
-				GenerateName: "appviewx-csi-provider" + "-",
+				GenerateName: "appviewx-csi-provider" + "-" + podName + "-" + podNamespace + "-",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "v1",
+						Kind:       "Pod",
+						Name:       podName,
+						UID:        uid,
+					},
+				},
 			},
 			Spec: currentCertSpec,
 		}
@@ -444,6 +455,7 @@ func (p *provider) HandleMountRequest(
 
 	podName := cfg.Parameters.PodInfo.Name
 	podNameSpace := cfg.Parameters.PodInfo.Namespace
+	uid := cfg.Parameters.PodInfo.UID
 
 	p.logger.Info(fmt.Sprintf("Started HandleMountRequest : podName : %s : podNameSpace : %s", podName, podNameSpace))
 
@@ -464,7 +476,7 @@ func (p *provider) HandleMountRequest(
 	if secretContents, err = getSecretContents(ctx, p.logger, secretNamespacedNames); err != nil {
 		p.logger.Info(fmt.Sprintf("SecretContents are not available, Creating Certificate CRD : %v", secretNamespacedNames))
 
-		createdCerts, err := createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace)
+		createdCerts, err := createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace, uid)
 		if err != nil {
 			p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while createCertCRDs : %v", err))
 			return nil, fmt.Errorf("Error in HandleMountRequest while createCertCRDs : %w", err)
@@ -504,7 +516,7 @@ func (p *provider) HandleMountRequest(
 			files = append(files, &pb.File{Path: k, Mode: int32(cfg.FilePermission), Contents: v})
 
 			objectVersions = append(objectVersions, &pb.ObjectVersion{
-				Id: k, Version: "1",
+				Id: k, Version: util.GetMD5Hash(v),
 			})
 		}
 		//TODO: Need to handle for multiple secrets
