@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +14,7 @@ import (
 
 	"github.com/AppViewX/appviewx-csi-provider/internal/config"
 	providerserver "github.com/AppViewX/appviewx-csi-provider/internal/server"
-	"github.com/AppViewX/appviewx-csi-provider/internal/version"
+	internalVersion "github.com/AppViewX/appviewx-csi-provider/internal/version"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -21,6 +22,17 @@ import (
 	"k8s.io/client-go/rest"
 	pb "sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
 )
+
+var version string
+var gitCommit string
+var buildTime string
+
+func init() {
+	log.Printf("appviewx-csi-provider")
+	log.Printf("version : %s\n", version)
+	log.Printf("gitCommit hash : %s \n", gitCommit)
+	log.Printf("buildTime : %s \n", buildTime)
+}
 
 func main() {
 	logger := hclog.Default()
@@ -57,7 +69,7 @@ func realMain(logger hclog.Logger) error {
 	}
 
 	if flags.Version {
-		v, err := version.GetVersion()
+		v, err := internalVersion.GetVersion()
 		if err != nil {
 			return fmt.Errorf("failed to print version, err: %w", err)
 		}
