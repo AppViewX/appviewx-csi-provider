@@ -11,7 +11,7 @@ W1- cert-orchestrator-install
           cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/cert-orchestrator/config/samples
 
       R2 - logs
-          cd /tmp
+          cd /tmp;\
           kubectl logs   $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager > /tmp/cert-orchestrator/log.txt && kubectl logs  -f $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager >> /tmp/cert-orchestrator/log.txt;
       
       R3 - logs          
@@ -23,7 +23,7 @@ W2 - cert-orchestrator-watch
       R1-C2 - certs
           watch kubectl get certs -A
       R2-C1 - secrets
-          watch "kubetl get secrets -A | grep cert-"
+          watch "kubectl get secrets -A | grep cert-"
       R3-c2 - certreq
           watch kubectl get certreq -A
 
@@ -39,7 +39,7 @@ kubectl apply -f ./templates
 ----------------------------------------------------------------------------------------------------------------------------------------
 	
     helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true
+	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true  --set rotationPollInterval=1m
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 3. Build Image
@@ -215,7 +215,7 @@ kubectl apply -f webapp-pod.yaml
       kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
 
     
-    kubectl delete pod webapp --force;kubectl apply -f webapp-pod.yaml
+    
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 
