@@ -39,6 +39,7 @@ var (
 	waitTimeInSeconds = 5
 	maxWaitCount      = 120
 	once              = sync.Once{}
+	podCertCache      = map[string]bool{}
 )
 
 func setUpClient() {
@@ -115,6 +116,10 @@ func NewProvider(logger hclog.Logger, k8sClient kubernetes.Interface) *provider 
 type cacheKey struct {
 	secretPath string
 	method     string
+}
+
+func getKey(podName, podNamespace string) string {
+	return fmt.Sprintf("%s-%s", podName, podNamespace)
 }
 
 func createCertCRDs(
@@ -279,7 +284,16 @@ func (p *provider) HandleMountRequest(
 	var err error
 	var secretContents []map[string][]byte
 	if secretContents, err = getSecretContents(ctx, p.logger, secretNamespacedNames); err != nil {
+		p.logger.Info(fmt.Sprintf("Error in getSecretContents : %v", err))
 		p.logger.Info(fmt.Sprintf("SecretContents are not available, Creating Certificate CRD : %v", secretNamespacedNames))
+
+		if _, ok := podCertCache[getKey(podName, podNameSpace)]; ok {
+			p.logger.Info(fmt.Sprintf("Cert Already Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+			return nil, nil
+		} else {
+			p.logger.Info(fmt.Sprintf("Cert Already Not Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+			podCertCache[getKey(podName, podNameSpace)] = true
+		}
 
 		createdCerts, err := createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace, uid)
 		if err != nil {

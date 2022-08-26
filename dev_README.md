@@ -39,7 +39,7 @@ kubectl apply -f ./templates
 ----------------------------------------------------------------------------------------------------------------------------------------
 	
     helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true  --set rotationPollInterval=1m
+	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true  --set rotationPollInterval=5m
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 3. Build Image
@@ -219,7 +219,31 @@ kubectl apply -f webapp-pod.yaml
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 
+Performance - Logs
+
+  Logs - provider and cert-orchestrator
+    kubectl get pods -A | grep provider | awk '{print $2}' | xargs kubectl logs -f 
+    kubectl get pods -A | grep orches | awk '{print $2}' | xargs kubectl logs -f -n cert-orchestrator-system -c manager
+
+  Watch   
+    watch "kubectl get pods -A | wc"
+    watch "kuebctl get secrets -A | grep cert- | wc"
+    watch "kubectl get certs -A | wc"
+    watch "kubectl get certreq -A | wc"
+
+  Clean
+    kubectl get secrets -A | grep cert- | grep -v token | awk '{print $2}' | xargs kubectl delete secrets -n test
+    kubectl get secrets -A | grep cert- | grep -v token | awk '{print $2}' | xargs kubectl delete secrets
+    kubectl get certs -A | awk '{print $2}' | xargs kubectl delete certs -n test
+    kubectl get certs -A | awk '{print $2}' | xargs kubectl delete certs
+    kubectl get certreq -A | awk '{print $2}' | xargs kubectl delete certreq -n test
+    kubectl get certreq -A | awk '{print $2}' | xargs kubectl delete certreq 
+
 
 TODO:
 
     1. Cleanup cert-orchestrator dependencies, use clean module usage
+
+
+
+
