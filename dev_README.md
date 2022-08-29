@@ -31,8 +31,12 @@ W2 - cert-orchestrator-watch
 1. Install AppViewX Provider
 ------------------------------------------------------------------------------------------------------------------------
     
-    cd /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/vault-csi-provider-setup-certificates/appviewx-provider/helm_charts/appviewx-manifests/helm-manifests/appviewx
-kubectl apply -f ./templates
+  cd /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/vault-csi-provider-setup-certificates/appviewx-provider/helm_charts/appviewx-manifests/helm-manifests/appviewx
+  kubectl apply -f ./templates
+
+***** otherNamespace *****
+  cd /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/vault-csi-provider-setup-certificates/appviewx-provider/op/otherNamespace/helm_charts/appviewx-manifests/helm-manifests/appviewx
+  kubectl apply -f ./templates
 
 ------------------------------------------------------------------------------------------------------------------------
 2. Install csi drive
@@ -40,6 +44,9 @@ kubectl apply -f ./templates
 	
     helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
 	  helm install csi secrets-store-csi-driver/secrets-store-csi-driver --set syncSecret.enabled=true --set enableSecretRotation=true  --set rotationPollInterval=5m
+
+***** otherNamespace *****
+    helm install csi secrets-store-csi-driver/secrets-store-csi-driver --namespace appviewx-csi-provider --set syncSecret.enabled=true --set enableSecretRotation=true  --set rotationPollInterval=5m  
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 3. Build Image
