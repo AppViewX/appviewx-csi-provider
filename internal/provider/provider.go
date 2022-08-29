@@ -39,7 +39,7 @@ var (
 	waitTimeInSeconds = 5
 	maxWaitCount      = 120
 	once              = sync.Once{}
-	podCertCache      = map[string]bool{}
+	podCertCache      = map[string]types.NamespacedName{}
 )
 
 func setUpClient() {
@@ -287,18 +287,35 @@ func (p *provider) HandleMountRequest(
 		p.logger.Info(fmt.Sprintf("Error in getSecretContents : %v", err))
 		p.logger.Info(fmt.Sprintf("SecretContents are not available, Creating Certificate CRD : %v", secretNamespacedNames))
 
-		if _, ok := podCertCache[getKey(podName, podNameSpace)]; ok {
-			p.logger.Info(fmt.Sprintf("Cert Already Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
-			return nil, nil
+		if certNamespacedName, ok := podCertCache[getKey(podName, podNameSpace)]; ok {
+
+			cert := certorchestratorv1.Cert{}
+			err := directClient.Get(ctx, certNamespacedName, &cert)
+			if err != nil {
+				p.logger.Error(fmt.Sprintf("Error in getting the Cert : Name : %s : Namespace : %s : %v",
+					certNamespacedName.Name, certNamespacedName.Namespace, err))
+				p.logger.Info(fmt.Sprintf("Will create a new cert : for the pod : %s - %s", podNameSpace, podName))
+			} else {
+				p.logger.Info(fmt.Sprintf("Cert Already Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+				return nil, nil
+			}
+
 		} else {
 			p.logger.Info(fmt.Sprintf("Cert Already Not Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
-			podCertCache[getKey(podName, podNameSpace)] = true
 		}
 
 		createdCerts, err := createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace, uid)
 		if err != nil {
 			p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while createCertCRDs : %v", err))
 			return nil, fmt.Errorf("Error in HandleMountRequest while createCertCRDs : %w", err)
+		}
+
+		//TODO: Only one cert is supported
+		if len(createdCerts) > 0 {
+			podCertCache[getKey(podName, podNameSpace)] = types.NamespacedName{
+				Name:      createdCerts[0].Name,
+				Namespace: createdCerts[0].Namespace,
+			}
 		}
 
 		err = waitTillCertificatesAreCreatedAndRetrieveCertificateContents(ctx, p.logger, createdCerts)

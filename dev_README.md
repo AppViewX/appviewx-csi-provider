@@ -227,7 +227,7 @@ Performance - Logs
 
   Watch   
     watch "kubectl get pods -A | wc"
-    watch "kuebctl get secrets -A | grep cert- | wc"
+    watch "kubectl get secrets -A | grep cert- | wc"
     watch "kubectl get certs -A | wc"
     watch "kubectl get certreq -A | wc"
 
