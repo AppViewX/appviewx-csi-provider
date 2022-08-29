@@ -163,7 +163,7 @@ func createCertCRDs(
 		l.Info(fmt.Sprintf("Created certificate : Name : %s : Namespace : %s", cert.Name, cert.Namespace))
 		certsCreated = append(certsCreated, cert)
 	}
-	l.Info("Cert Creation Success Pod : Name : %s : Namespace : %s", podName, podNamespace)
+	l.Info(fmt.Sprintf("Cert Creation Success Pod : Name : %s : Namespace : %s", podName, podNamespace))
 	return certsCreated, nil
 }
 
@@ -208,7 +208,7 @@ func waitTillCertificatesAreCreatedAndRetrieveCertificateContents(
 				allSecretsReady = false
 				break
 			} else {
-				l.Info("Certificate Content available : %v", certificateNamespacedName)
+				l.Info(fmt.Sprintf("Certificate Content available : %v", certificateNamespacedName))
 				certs[i] = currentCert
 			}
 		}
