@@ -246,6 +246,29 @@ Performance - Logs
     kubectl get certreq -A | awk '{print $2}' | xargs kubectl delete certreq -n test
     kubectl get certreq -A | awk '{print $2}' | xargs kubectl delete certreq 
 
+  Run
+    cd /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation
+
+      EJBCA-Async
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-EJBCA-Async/secretProviderClass
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-EJBCA-Async/pods
+        >> kubectl get secrets -A | grep cert- | awk '{print $2}' | xargs kubectl delete secret 
+        >> kubectl get pods -A | grep webapp | awk '{print $2}' | xargs kubectl delete pod
+
+      EJBCA-Sync
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-EJBCA-Sync/secretProviderClass
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-EJBCA-Sync/pods
+        >> kubectl get secrets -A | grep cert- | awk '{print $2}' | xargs kubectl delete secret 
+        >> kubectl get pods -A | grep webapp | awk '{print $2}' | xargs kubectl delete pod
+
+      SelfSignedCA
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-SelfSignedCA/secretProviderClass
+        >> kubectl apply -f /data/AppViewX/AI/TASKS/14.2022-2023/012_cert-orchestrator-JLR/performanceValidation/secretProviderAndPod-SelfSignedCA/pods
+        >> kubectl get secrets -A | grep cert- | awk '{print $2}' | xargs kubectl delete secret 
+        >> kubectl get pods -A | grep webapp | awk '{print $2}' | xargs kubectl delete pod
+
+
+
 
 TODO:
 
