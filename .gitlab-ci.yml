@@ -1,0 +1,53 @@
+## Global variable
+variables:
+   COMMIT_SHA: ${CI_COMMIT_SHORT_SHA}_${CI_PIPELINE_ID}
+   PROFILE_NAME: avx-csi-provider
+   BINARY_NAME: avx-csi-provider
+   ARTIFACT_NAME: cert_go_avx-csi-provider
+
+# List of stages 
+stages:
+  - build
+  - push_artifact
+
+build_binary:
+   stage: build
+   tags:
+      - docker_build_runner
+   script:
+      - |
+
+         # cp /home/gitlab-runner/share/gcp/Dockerfile Dockerfile ;
+
+         echo "1) ------------ Generating Binary  "
+         # export GOPROXY=${GOPROXY_URL} 
+
+         sed -ie "s/main.gitCommit=[a-z0-9A-Z]*/main.gitCommit=${CI_COMMIT_SHORT_SHA}/" Dockerfile
+         sed -ie "s/main.versions=[a-z0-9A-Z]*/main.versions=${CI_COMMIT_REF_NAME}/" Dockerfile
+         
+         make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${COMMIT_SHA}
+         
+         
+         docker save ${PROFILE_NAME}:${COMMIT_SHA} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+
+         echo "3) ------------ Zip artifact and push to nexus  "
+         tar cvzf ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+         
+   artifacts:
+     paths:
+       - ./${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz
+     expire_in: 10 minute
+
+push:
+   stage: push_artifact
+   tags:
+      - docker_build_runner
+   script:
+      - |
+         ls -1 */
+         curl -v --user "admin:$nexus_repo_password" --upload-file ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz \
+         http://repo.appviewx.in/repository/${NEXUS_REPO_NAME}/${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz
+   only:
+     variables:
+       - $CI_COMMIT_REF_PROTECTED == "true"
+       - $CI_COMMIT_TAG =~ /^v\d+.\d+.\d+-?.*$/
