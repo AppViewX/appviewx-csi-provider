@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -184,8 +185,8 @@ func waitTillCertificatesAreCreatedAndRetrieveCertificateContents(
 		})
 	}
 
+outer:
 	for currentWaitCount < maxWaitCount && !allSecretsReady {
-		time.Sleep(time.Second * time.Duration(waitTimeInSeconds))
 		allSecretsReady = true
 		for i := 0; i < len(certs); i++ {
 			cert := certs[i]
@@ -201,8 +202,13 @@ func waitTillCertificatesAreCreatedAndRetrieveCertificateContents(
 			err := directClient.Get(ctx, certificateNamespacedName, &currentCert)
 			if err != nil {
 				l.Info(fmt.Sprintf("OK - Error in Getting the Certificate : %v : %v", certificateNamespacedName, err))
-				allSecretsReady = false
-				break
+				// allSecretsReady = false
+				if strings.Contains(fmt.Sprintf("%v", err), "not found") {
+					break outer
+				} else {
+					allSecretsReady = false
+					break
+				}
 			}
 			if len(currentCert.Status.Certificate) <= 0 {
 				allSecretsReady = false
@@ -213,6 +219,9 @@ func waitTillCertificatesAreCreatedAndRetrieveCertificateContents(
 			}
 		}
 		currentWaitCount++
+		if !allSecretsReady {
+			time.Sleep(time.Second * time.Duration(waitTimeInSeconds))
+		}
 	}
 
 	if currentWaitCount == maxWaitCount {
@@ -283,58 +292,63 @@ func (p *provider) HandleMountRequest(
 
 	var err error
 	var secretContents []map[string][]byte
-	if secretContents, err = getSecretContents(ctx, p.logger, secretNamespacedNames); err != nil {
-		p.logger.Info(fmt.Sprintf("Error in getSecretContents : %v", err))
-		p.logger.Info(fmt.Sprintf("SecretContents are not available, Creating Certificate CRD : %v", secretNamespacedNames))
 
-		if certNamespacedName, ok := podCertCache[getKey(podName, podNameSpace)]; ok {
+	var isCertCreationRequired bool
+	var createdCerts []v1.Cert
 
-			cert := certorchestratorv1.Cert{}
-			err := directClient.Get(ctx, certNamespacedName, &cert)
-			if err != nil {
-				p.logger.Error(fmt.Sprintf("Error in getting the Cert : Name : %s : Namespace : %s : %v",
-					certNamespacedName.Name, certNamespacedName.Namespace, err))
-				p.logger.Info(fmt.Sprintf("Will create a new cert : for the pod : %s - %s", podNameSpace, podName))
-			} else {
-				p.logger.Info(fmt.Sprintf("Cert Already Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
-				return nil, nil
-			}
+	if certNamespacedName, ok := podCertCache[getKey(podName, podNameSpace)]; ok {
 
+		cert := certorchestratorv1.Cert{}
+		err := directClient.Get(ctx, certNamespacedName, &cert)
+		if err != nil {
+			p.logger.Error(fmt.Sprintf("Error in getting the Cert : Name : %s : Namespace : %s : %v",
+				certNamespacedName.Name, certNamespacedName.Namespace, err))
+			p.logger.Info(fmt.Sprintf("Will create a new cert : for the pod : %s - %s", podNameSpace, podName))
+			isCertCreationRequired = true
 		} else {
-			p.logger.Info(fmt.Sprintf("Cert Already Not Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+			p.logger.Info(fmt.Sprintf("Cert Already Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+			createdCerts = append(createdCerts, cert)
 		}
 
-		createdCerts, err := createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace, uid)
+	} else {
+		isCertCreationRequired = true
+		p.logger.Info(fmt.Sprintf("Cert Already Not Created for the POD : %s : PodNamespace : %s", podName, podNameSpace))
+	}
+
+	if isCertCreationRequired {
+
+		p.logger.Info(fmt.Sprintf("isCertCreationRequired : %v : calling createCertCRDs", isCertCreationRequired))
+
+		createdCerts, err = createCertCRDs(ctx, p.logger, cfg.Parameters.CertSpecs, podName, podNameSpace, uid)
 		if err != nil {
 			p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while createCertCRDs : %v", err))
 			return nil, fmt.Errorf("Error in HandleMountRequest while createCertCRDs : %w", err)
 		}
-
-		//TODO: Only one cert is supported
-		if len(createdCerts) > 0 {
-			podCertCache[getKey(podName, podNameSpace)] = types.NamespacedName{
-				Name:      createdCerts[0].Name,
-				Namespace: createdCerts[0].Namespace,
-			}
-		}
-
-		err = waitTillCertificatesAreCreatedAndRetrieveCertificateContents(ctx, p.logger, createdCerts)
-		if err != nil {
-			p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while waitTillCertificatesAreCreatedAndRetrieveCertificateContents : %v", err))
-			return nil, fmt.Errorf("Error in HandleMountRequest while waitTillCertificatesAreCreatedAndRetrieveCertificateContent : %w", err)
-		}
-
-		//Try to get secrets after a second
-		time.Sleep(time.Second)
-
-		secretContents, err = getSecretContents(ctx, p.logger, secretNamespacedNames)
-		if err != nil {
-			p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while getSecretContents : %v", err))
-			return nil, fmt.Errorf("Error in HandleMountRequest while getSecretContents : %w", err)
-		}
-
 	} else {
-		p.logger.Info(fmt.Sprintf("SecretContents are already available : %v", secretNamespacedNames))
+		p.logger.Info(fmt.Sprintf("isCertCreationRequired : %v : Not creating Cert CRDs", isCertCreationRequired))
+	}
+
+	//TODO: Only one cert is supported
+	if len(createdCerts) > 0 {
+		podCertCache[getKey(podName, podNameSpace)] = types.NamespacedName{
+			Name:      createdCerts[0].Name,
+			Namespace: createdCerts[0].Namespace,
+		}
+	}
+
+	err = waitTillCertificatesAreCreatedAndRetrieveCertificateContents(ctx, p.logger, createdCerts)
+	if err != nil {
+		p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while waitTillCertificatesAreCreatedAndRetrieveCertificateContents : %v", err))
+		return nil, fmt.Errorf("Error in HandleMountRequest while waitTillCertificatesAreCreatedAndRetrieveCertificateContent : %w", err)
+	}
+
+	//Try to get secrets after a second
+	time.Sleep(time.Second)
+
+	secretContents, err = getSecretContents(ctx, p.logger, secretNamespacedNames)
+	if err != nil {
+		p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while getSecretContents : %v", err))
+		return nil, fmt.Errorf("Error in HandleMountRequest while getSecretContents : %w", err)
 	}
 
 	var files []*pb.File

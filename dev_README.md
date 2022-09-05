@@ -9,6 +9,9 @@ W1- cert-orchestrator-install
         
       R1-C2 - config
           cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/cert-orchestrator/config/samples
+          
+          Create CA Setting
+              kubectl apply -f ./005_appviewx/casetting/
 
       R2 - logs
           cd /tmp;\
@@ -220,6 +223,8 @@ kubectl apply -f webapp-pod.yaml
     R2 - logs
       cd /tmp
       kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
+
+      kubectl get pods -n appviewx-csi-provider| grep appviewx-csi-provider- | awk '{print $1}'  | xargs kubectl logs -f  -n appviewx-csi-provider
 
     
     
