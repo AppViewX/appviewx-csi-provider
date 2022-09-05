@@ -28,10 +28,10 @@ build_binary:
          make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${COMMIT_SHA}
          
          
-         docker save ${PROFILE_NAME}:${COMMIT_SHA} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+        #  docker save ${PROFILE_NAME}:${COMMIT_SHA} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
 
-         echo "3) ------------ Zip artifact and push to nexus  "
-         tar cvzf ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+        #  echo "3) ------------ Zip artifact and push to nexus  "
+        #  tar cvzf ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
          
    artifacts:
      paths:
