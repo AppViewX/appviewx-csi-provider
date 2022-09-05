@@ -25,13 +25,13 @@ build_binary:
          sed -ie "s/main.gitCommit=[a-z0-9A-Z]*/main.gitCommit=${CI_COMMIT_SHORT_SHA}/" Dockerfile
          sed -ie "s/main.versions=[a-z0-9A-Z]*/main.versions=${CI_COMMIT_REF_NAME}/" Dockerfile
          
-         make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${COMMIT_SHA}
+         make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${ARTIFACT_NAME}
          
-         
-         docker save ${PROFILE_NAME}:${COMMIT_SHA} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+         echo "docker save ${PROFILE_NAME}:${ARTIFACT_NAME} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}"
+         docker save ${PROFILE_NAME}:${ARTIFACT_NAME} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
 
-         echo "3) ------------ Zip artifact and push to nexus  "
-         tar cvzf ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
+        #  echo "3) ------------ Zip artifact and push to nexus  "
+        #tar cvzf ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}.tar.gz ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
          
    artifacts:
      paths:
