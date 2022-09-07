@@ -15,4 +15,5 @@ require (
 	k8s.io/client-go v0.24.2
 	sigs.k8s.io/controller-runtime v0.12.3
 	sigs.k8s.io/secrets-store-csi-driver v1.0.0
+	software.sslmate.com/src/go-pkcs12 v0.2.0 // indirect
 )

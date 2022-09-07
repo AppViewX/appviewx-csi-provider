@@ -2,8 +2,15 @@ package provider
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +28,7 @@ import (
 	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	pb "sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
+	"software.sslmate.com/src/go-pkcs12"
 
 	certorchestratorv1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
 	v1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
@@ -351,21 +359,10 @@ func (p *provider) HandleMountRequest(
 		return nil, fmt.Errorf("Error in HandleMountRequest while getSecretContents : %w", err)
 	}
 
-	var files []*pb.File
-	var objectVersions []*pb.ObjectVersion
-
-	for _, currentSecretContent := range secretContents {
-
-		for k, v := range currentSecretContent {
-
-			files = append(files, &pb.File{Path: k, Mode: int32(cfg.FilePermission), Contents: v})
-
-			objectVersions = append(objectVersions, &pb.ObjectVersion{
-				Id: k, Version: util.GetMD5Hash(v),
-			})
-		}
-		//TODO: Need to handle for multiple secrets
-		break
+	files, objectVersions, err := getMountFilesAndObjectVersions(cfg, secretContents, p.logger)
+	if err != nil {
+		p.logger.Error(fmt.Sprintf("Error in HandleMountRequest while getMountFilesAndObjectVersions : %v", err))
+		return nil, fmt.Errorf("error in handleMountRequest while getMountFilesAndObjectVersions : %w", err)
 	}
 
 	p.logger.Info("Finished HandleMountRequest")
@@ -374,4 +371,195 @@ func (p *provider) HandleMountRequest(
 		Files:         files,
 		ObjectVersion: objectVersions,
 	}, nil
+}
+
+func getMountFilesAndObjectVersions(
+	cfg config.Config,
+	secretContents []map[string][]byte,
+	l hclog.Logger,
+) (files []*pb.File, objectVersions []*pb.ObjectVersion, err error) {
+
+	encodingFormat := strings.ToLower(cfg.Parameters.ObjectEncoding)
+
+	switch strings.ToLower(cfg.Parameters.ObjectFormat) {
+	case util.OBJECT_FORMAT_PEM:
+		l.Info("objectFormat pem")
+		for _, currentSecretContent := range secretContents {
+
+			for k, v := range currentSecretContent {
+
+				encodedContent, err := encode(v, encodingFormat, l)
+				if err != nil {
+					l.Error(fmt.Sprintf("Error in getMountFilesAndObjectVersions while encode : %v", err))
+					return nil, nil, fmt.Errorf("error in getMountFilesAndObjectVersions while encode : %w", err)
+				}
+
+				files = append(files, &pb.File{Path: k, Mode: int32(cfg.FilePermission), Contents: encodedContent})
+
+				objectVersions = append(objectVersions, &pb.ObjectVersion{
+					Id: k, Version: util.GetMD5Hash(encodedContent),
+				})
+			}
+			//TODO: Need to handle for multiple secrets
+			break
+		}
+		return
+	case util.OBJECT_FORMAT_PFX:
+		l.Info("objectFormat pfx")
+
+		for _, currentSecretContent := range secretContents {
+			pfxContent, password, err := getPfxContentForSecret(currentSecretContent, l)
+			if err != nil {
+				l.Error(fmt.Sprintf("Error in getMountFilesAndObjectVersions while getPfxContentForSecret : %v", err))
+				return nil, nil, fmt.Errorf("error in getMountFilesAndObjectVersions while getPfxContentForSecret : %w", err)
+			}
+			encodedContent, err := encode(pfxContent, encodingFormat, l)
+			if err != nil {
+				l.Error(fmt.Sprintf("Error in getMountFilesAndObjectVersions while encode : %v", err))
+				return nil, nil, fmt.Errorf("error in getMountFilesAndObjectVersions while encode : %w", err)
+			}
+
+			files = append(files, &pb.File{Path: "tls.pfx", Mode: int32(cfg.FilePermission), Contents: encodedContent})
+			objectVersions = append(objectVersions, &pb.ObjectVersion{
+				Id: "tls.pfx", Version: util.GetMD5Hash(encodedContent),
+			})
+
+			files = append(files, &pb.File{Path: "password", Mode: int32(cfg.FilePermission), Contents: []byte(password)})
+			objectVersions = append(objectVersions, &pb.ObjectVersion{
+				Id: "password", Version: util.GetMD5Hash([]byte(password)),
+			})
+
+		}
+
+		return
+	default:
+		err = fmt.Errorf("Only pem and pfx 'objectFormat' are supported : %s is not supported", strings.ToLower(cfg.Parameters.ObjectFormat))
+		return
+	}
+}
+
+func getPfxContentForSecret(currentSecretContent map[string][]byte, l hclog.Logger) (pfxContents []byte, password string, err error) {
+
+	l.Debug("Starting getPfxContentForSecret")
+
+	privateKeyFileContents, ok := currentSecretContent["tls.key"]
+	if !ok {
+		l.Error("error in getPfxContentForSecret tls.key is not available")
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret : tls.key is not available ")
+	}
+
+	certificateFileContents, ok := currentSecretContent["tls.crt"]
+	if !ok {
+		l.Error("error in getPfxContentForSecret tls.crt is not available")
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret : tls.crt is not available")
+	}
+
+	caCertificateFileContents, ok := currentSecretContent["ca.crt"]
+	if !ok {
+		l.Error("error in getPfxContentForSecret ca.crt is not available")
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret ca.crt is not available")
+	}
+
+	block, _ := pem.Decode(privateKeyFileContents)
+	if block == nil {
+		l.Error("error in getPfxContentForSecret while Decoding PrivateKey")
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret while Decoding PrivateKey")
+	}
+
+	var keyBytes *rsa.PrivateKey
+	if block != nil {
+		keyBytes, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			l.Debug("Error in getPfxContentForSecret while ParsePKCS1PrivateKey: %v", err)
+			return nil, "", fmt.Errorf("error in getPfxContentForSecret while ParsePKCS1PrivateKey : %w", err)
+		}
+	}
+
+	signedCert, err := getCertificateFromContents(certificateFileContents, l)
+	if err != nil {
+		log.Println("Error in getPfxContentForSecret while  getCertificateFromContents", err)
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret while getCertificateFromContents : %w", err)
+	}
+
+	caCerts, err := getCACerts(caCertificateFileContents, l)
+	if err != nil {
+		log.Println("Error in getPfxContentForSecret while getCACerts", err)
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret while getCACerts : %w", err)
+	}
+
+	password = util.GetRandomString()
+
+	l.Info("Generating the pfx file")
+	pfxData, err := pkcs12.Encode(rand.Reader, keyBytes, signedCert, caCerts, password)
+	if err != nil {
+		log.Println("Error in getPfxContentForSecret while pkcs12.Encode", err)
+		return nil, "", fmt.Errorf("error in getPfxContentForSecret while pkcs12.Encode : %w", err)
+	}
+
+	l.Debug("Finished getPfxContentForSecret")
+	return pfxData, password, nil
+}
+
+func getCACerts(caCertificateFileContents []byte, l hclog.Logger) (output []*x509.Certificate, err error) {
+	l.Debug("Starting getCACerts")
+	var blocks [][]byte
+
+	for {
+		var certDERBlock *pem.Block
+		certDERBlock, caCertificateFileContents = pem.Decode(caCertificateFileContents)
+		if certDERBlock == nil {
+			break
+		}
+		blocks = append(blocks, certDERBlock.Bytes)
+	}
+
+	for _, block := range blocks {
+		cert, err := x509.ParseCertificate(block)
+		if err != nil {
+			l.Error("Error in getCACerts while ParseCertificate : %v", err)
+			return nil, fmt.Errorf("error in getCACerts while parseCertificate : %w", err)
+		}
+		output = append(output, cert)
+	}
+	l.Debug("Finished getCACerts")
+	return
+}
+
+func getCertificateFromContents(certificateContents []byte, l hclog.Logger) (cert *x509.Certificate, err error) {
+	l.Debug("Starting GetCertificateFromContents")
+	block, _ := pem.Decode(certificateContents)
+	cert, err = x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		l.Error(fmt.Sprintf("error in GetCertificateFromContents while ParseCertificate : %v", err))
+		return nil, fmt.Errorf("error in GetCertificateFromContents while ParseCertificate : %w", err)
+	}
+	l.Debug("Finished GetCertificateFromContents")
+	return
+}
+
+func encode(input []byte, objectEncodingFormat string, l hclog.Logger) (output []byte, err error) {
+	l.Debug("Starting encode")
+
+	switch objectEncodingFormat {
+
+	case util.OBJECT_ENCODING_BASE_64:
+		l.Info(fmt.Sprintf("Doing : %s", util.OBJECT_ENCODING_BASE_64))
+		output = make([]byte, base64.StdEncoding.EncodedLen(len(input)))
+		base64.StdEncoding.Encode(output, input)
+		return
+
+	case util.OBJECT_ENCODING_HEX:
+		l.Info(fmt.Sprintf("Doing : %s", util.OBJECT_ENCODING_HEX))
+		output = make([]byte, hex.EncodedLen(len(input)))
+		hex.Encode(output, input)
+		return
+
+	case util.OBJECT_ENCODING_UTF_8:
+		l.Info(fmt.Sprintf("Doing : %s", util.OBJECT_ENCODING_UTF_8))
+		output = input
+		return
+
+	default:
+		return nil, fmt.Errorf("error in encode : %s is not supported", objectEncodingFormat)
+	}
 }

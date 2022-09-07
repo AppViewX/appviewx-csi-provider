@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
-	v1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
+
+	v1 "github.com/AppViewX/appviewx-csi-provider/cert-orchestrator/api/v1"
+	"github.com/AppViewX/appviewx-csi-provider/internal/util"
 )
 
 // Config represents all of the provider's configurable behaviour from the SecretProviderClass,
@@ -30,10 +33,12 @@ type FlagsConfig struct {
 }
 
 type Parameters struct {
-	RoleName  string
-	CertSpecs []v1.CertSpec
-	PodInfo   PodInfo
-	Audience  string
+	RoleName       string
+	CertSpecs      []v1.CertSpec
+	PodInfo        PodInfo
+	Audience       string
+	ObjectFormat   string
+	ObjectEncoding string
 }
 
 type PodInfo struct {
@@ -89,6 +94,9 @@ func parseParameters(parametersStr string) (Parameters, error) {
 	parameters.PodInfo.ServiceAccountName = params["csi.storage.k8s.io/serviceAccount.name"]
 	parameters.Audience = params["audience"]
 
+	parameters.ObjectFormat = params["objectFormat"]
+	parameters.ObjectEncoding = params["objectEncoding"]
+
 	secretsYaml := params["objects"]
 
 	//TODO: - Remove yaml to map and back to certSpec conversion
@@ -118,5 +126,25 @@ func (c *Config) validate() error {
 	if len(c.Parameters.CertSpecs) == 0 {
 		return errors.New("no secrets configured - the provider will not read any secret material")
 	}
+
+	if len(c.Parameters.ObjectFormat) == 0 {
+		fmt.Printf("ObjectFormat is not given : Setting : %s\n", util.OBJECT_FORMAT_PEM)
+		c.Parameters.ObjectFormat = util.OBJECT_FORMAT_PEM
+	} else if strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PEM &&
+		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PFX {
+
+		return fmt.Errorf("%s : is not a valid ObjectFormat", c.Parameters.ObjectFormat)
+	}
+
+	if len(c.Parameters.ObjectEncoding) == 0 {
+		fmt.Printf("ObjectEncoding is not given : Setting : %s\n", util.OBJECT_ENCODING_UTF_8)
+		c.Parameters.ObjectEncoding = util.OBJECT_ENCODING_UTF_8
+	} else if strings.ToLower(c.Parameters.ObjectEncoding) != util.OBJECT_ENCODING_UTF_8 &&
+		strings.ToLower(c.Parameters.ObjectEncoding) != util.OBJECT_ENCODING_HEX &&
+		strings.ToLower(c.Parameters.ObjectEncoding) != util.OBJECT_ENCODING_BASE_64 {
+
+		return fmt.Errorf("%s : is not a valid ObjectEncoding", c.Parameters.ObjectEncoding)
+	}
+
 	return nil
 }

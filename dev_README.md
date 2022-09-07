@@ -65,7 +65,7 @@ W2 - cert-orchestrator-watch
     cd /home/gopal.m/git/PRIVATE_REPOSITORIES/GROUPS/cnat/appviewx-csi-provider;\
     make build;\
     make image;\
-    kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl delete pod ;sleep 5;kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
+    kubectl get pods -A | grep appviewx-csi-provider- | awk '{print $2}'  | xargs kubectl delete pod -n appviewx-csi-provider;sleep 5;kubectl get pods -A | grep appviewx-csi-provider- | awk '{print $2}'  | xargs kubectl logs -f -n appviewx-csi-provider
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 5. Install all ( appviewx-provider-install )
@@ -152,6 +152,8 @@ metadata:
 spec:
   provider: appviewx
   parameters:
+    objectFormat: pem    # pem, pfx
+    objectEncoding: utf-8     # utf-8, hex,  base64 
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
         duration: 5m
@@ -282,3 +284,6 @@ TODO:
 
 
 
+kubectl get webapp -o yaml | grep container
+docker exec -i -t 91a527ac0159701ee3371c4a6abc1865d576321fd07414bd50c68b478f0cc87b ls -larth /etc/ssl/
+docker cp 91a527ac0159701ee3371c4a6abc1865d576321fd07414bd50c68b478f0cc87b:/etc/ssl/..2022_09_06_12_25_58.3034739725/tls.pfx .

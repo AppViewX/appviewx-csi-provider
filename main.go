@@ -12,15 +12,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AppViewX/appviewx-csi-provider/internal/config"
-	providerserver "github.com/AppViewX/appviewx-csi-provider/internal/server"
-	internalVersion "github.com/AppViewX/appviewx-csi-provider/internal/version"
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	pb "sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
+
+	"github.com/AppViewX/appviewx-csi-provider/internal/config"
+	providerserver "github.com/AppViewX/appviewx-csi-provider/internal/server"
+	internalVersion "github.com/AppViewX/appviewx-csi-provider/internal/version"
 )
 
 var version string

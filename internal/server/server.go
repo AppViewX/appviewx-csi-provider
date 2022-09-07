@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/AppViewX/appviewx-csi-provider/internal/config"
-	"github.com/AppViewX/appviewx-csi-provider/internal/provider"
-	"github.com/AppViewX/appviewx-csi-provider/internal/version"
 	"github.com/hashicorp/go-hclog"
 	"k8s.io/client-go/kubernetes"
 	pb "sigs.k8s.io/secrets-store-csi-driver/provider/v1alpha1"
+
+	"github.com/AppViewX/appviewx-csi-provider/internal/config"
+	"github.com/AppViewX/appviewx-csi-provider/internal/provider"
+	"github.com/AppViewX/appviewx-csi-provider/internal/version"
 )
 
 var (
