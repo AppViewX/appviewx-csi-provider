@@ -21,7 +21,7 @@ spec:
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
         duration: 5m
-        renewBefore: 3m
+        renewBefore: 4m
         subject:
           countries:
           - IN
@@ -120,7 +120,7 @@ echo "Verifying Root to Leaf"
 openssl verify -no_check_time -CAfile <(cat ./ca1.crt) ./tls1.crt
 echo "---------------------------------------------------------------" 
 
-for i in {180..1}; do printf "Waiting for Renewal to Finish: $i \r" && sleep 1; done
+for i in {120..1}; do printf "Waiting for Renewal to Finish: $i \r" && sleep 1; done
 
 echo "---------------------------------------------------------------"                                              
 echo "Renewal Finished"                                              
