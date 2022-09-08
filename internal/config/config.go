@@ -131,9 +131,12 @@ func (c *Config) validate() error {
 		fmt.Printf("ObjectFormat is not given : Setting : %s\n", util.OBJECT_FORMAT_PEM)
 		c.Parameters.ObjectFormat = util.OBJECT_FORMAT_PEM
 	} else if strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PEM &&
-		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PFX {
+		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PFX &&
+		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_JKS {
 
-		return fmt.Errorf("%s : is not a valid ObjectFormat", c.Parameters.ObjectFormat)
+		return fmt.Errorf("%s : is not a valid ObjectFormat only %s,%s,%s are supported",
+			c.Parameters.ObjectFormat,
+			util.OBJECT_FORMAT_PEM, util.OBJECT_FORMAT_PFX, util.OBJECT_FORMAT_JKS)
 	}
 
 	if len(c.Parameters.ObjectEncoding) == 0 {
@@ -143,7 +146,10 @@ func (c *Config) validate() error {
 		strings.ToLower(c.Parameters.ObjectEncoding) != util.OBJECT_ENCODING_HEX &&
 		strings.ToLower(c.Parameters.ObjectEncoding) != util.OBJECT_ENCODING_BASE_64 {
 
-		return fmt.Errorf("%s : is not a valid ObjectEncoding", c.Parameters.ObjectEncoding)
+		return fmt.Errorf("%s : is not a valid ObjectEncoding only %s,%s,%s are supported",
+			c.Parameters.ObjectEncoding,
+			util.OBJECT_ENCODING_UTF_8, util.OBJECT_ENCODING_HEX, util.OBJECT_ENCODING_BASE_64,
+		)
 	}
 
 	return nil

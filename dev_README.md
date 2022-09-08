@@ -13,6 +13,10 @@ W1- cert-orchestrator-install
           Create CA Setting
               kubectl apply -f ./005_appviewx/casetting/
 
+          Add Renewaljob
+              kubectl apply -f ./012_renewal_appviewx/renewaljob/cert-orchestrator_v1_renewaljob.yaml 
+
+
       R2 - logs
           cd /tmp;\
           kubectl logs   $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager > /tmp/cert-orchestrator/log.txt && kubectl logs  -f $(kubectl get pods -n cert-orchestrator-system |     awk '{ if(NR==2) print $1}' ) -n cert-orchestrator-system -c manager >> /tmp/cert-orchestrator/log.txt;
@@ -152,7 +156,7 @@ metadata:
 spec:
   provider: appviewx
   parameters:
-    objectFormat: pem    # pem, pfx
+    objectFormat: pem    # pem, pfx, jks
     objectEncoding: utf-8     # utf-8, hex,  base64 
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
@@ -224,7 +228,7 @@ kubectl apply -f webapp-pod.yaml
 
     R2 - logs
       cd /tmp
-      kubectl get pods | grep provider | awk '{print $1}'  | xargs kubectl logs -f 
+      kubectl get pods -A | grep orches | awk '{print $2}'  | xargs kubectl logs -f -n cert-orchestrator-system -c manager
 
       kubectl get pods -n appviewx-csi-provider| grep appviewx-csi-provider- | awk '{print $1}'  | xargs kubectl logs -f  -n appviewx-csi-provider
 
@@ -236,7 +240,7 @@ kubectl apply -f webapp-pod.yaml
 Performance - Logs
 
   Logs - provider and cert-orchestrator
-    kubectl get pods -A | grep provider | awk '{print $2}' | xargs kubectl logs -f 
+    kubectl get pods -A | grep appviewx-csi-provider- | awk '{print $2}' | xargs kubectl logs -f -n appviewx-csi-provider
     kubectl get pods -A | grep orches | awk '{print $2}' | xargs kubectl logs -f -n cert-orchestrator-system -c manager
 
   Watch   
