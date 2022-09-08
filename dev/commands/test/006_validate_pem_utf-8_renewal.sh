@@ -1,8 +1,8 @@
 echo ""
 echo ""
-echo "***** 005_validate_jks_base64 *****" 
+echo "***** 006_validate_pem_utf-8_renewal *****" 
 echo "-----------------------------------------------------------------------"
-echo "Installing SecretProviderClass - jks - base64" 
+echo "Installing SecretProviderClass - pem - utf-8 - RENEWAL" 
 echo "-----------------------------------------------------------------------"
 
 kubectl delete secret cert-default-leaf-casetting-default-ca-casetting-default-selfsigned
@@ -16,8 +16,8 @@ metadata:
 spec:
   provider: appviewx
   parameters:
-    objectFormat: jks    # pem, pfx, p12, jks
-    objectEncoding: base64     # utf-8, hex,  base64 
+    objectFormat: pem    # pem, pfx, p12, jks
+    objectEncoding: utf-8     # utf-8, hex,  base64 
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
         duration: 5m
@@ -92,47 +92,64 @@ cd ./certs
 
 for i in {20..1}; do printf "waiting for pod to ready: $i \r" && sleep 1; done
 
-kubectl exec -it webapp -- cat /etc/ssl/tls.jks | base64 --decode > ./tls.jks
-kubectl exec -it webapp -- cat /etc/ssl/aliasName > ./aliasName
-kubectl exec -it webapp -- cat /etc/ssl/aliasPassword > ./aliasPassword
-kubectl exec -it webapp -- cat /etc/ssl/jksPassword > ./jksPassword
-
-echo "Generating .p12 file"
-keytool -importkeystore -srckeystore ./tls.jks \
-                        -destkeystore ./tls.p12 \
-                        -srcstoretype JKS \
-                        -deststoretype PKCS12 \
-                        -deststorepass testtest \
-                        -srcstorepass $(cat ./jksPassword) \
-                        -srckeypass $(cat ./aliasPassword) \
-                        -srcalias $(cat ./aliasName) \
-                        -destkeypass testtest
-
-
-openssl pkcs12 -in ./tls.p12   -passin pass:testtest --passout pass:testtest -nocerts -nodes | sed -ne '/-BEGIN PRIVATE KEY-/,/-END PRIVATE KEY-/p' > ./tls.key
-openssl pkcs12 -in ./tls.p12   -passin pass:testtest --passout pass:testtest -clcerts -nokeys | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > ./tls.crt
-openssl pkcs12 -in ./tls.p12   -passin pass:testtest --passout pass:testtest -cacerts -nokeys  -chain | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > ./ca.crt
+kubectl exec -it webapp -- cat /etc/ssl/tls.crt > ./tls1.crt
+kubectl exec -it webapp -- cat /etc/ssl/tls.key > ./tls1.key
+kubectl exec -it webapp -- cat /etc/ssl/ca.crt > ./ca1.crt
 
 echo "---------------------------------------------------------------"                                              
 echo "Getting md5sum and filesize"
-echo "md5sum - ./ca.crt  : $(md5sum ./ca.crt) $(stat -c %s ./ca.crt)"
+echo "md5sum - ./ca1.crt  : $(md5sum ./ca1.crt) $(stat -c %s ./ca1.crt)"
 echo "Getting SerialNumber"
-echo "$(openssl x509 -in ./ca.crt  -text -noout | grep -A1  "Serial Number:")"
+echo "$(openssl x509 -in ./ca1.crt  -text -noout | grep -A1  "Serial Number:")"
 echo "---------------------------------------------------------------"        
 echo "Getting md5sum and filesize"
-echo "md5sum - ./tls.crt : $(md5sum ./tls.crt) $(stat -c %s ./tls.crt)"
+echo "md5sum - ./tls1.crt : $(md5sum ./tls1.crt) $(stat -c %s ./tls1.crt)"
 echo "Getting SerialNumber"
-echo "$(openssl x509 -in ./tls.crt  -text -noout | grep -A1  "Serial Number:")"
+echo "$(openssl x509 -in ./tls1.crt  -text -noout | grep -A1  "Serial Number:")"
 echo "---------------------------------------------------------------"
 echo "Getting md5sum and filesize"
-echo "md5sum - ./tls.key : $(md5sum ./tls.key) $(stat -c %s ./tls.key)"
+echo "md5sum - ./tls1.key : $(md5sum ./tls1.key) $(stat -c %s ./tls1.key)"
 echo "---------------------------------------------------------------" 
 
 echo "Checking modulus of Certificate and Private Key"
-echo "cert modulus - ./tls.crt : $(openssl x509 -noout -modulus -in ./tls.crt  | md5sum)"
-echo "key modulus - ./tls.key : $(openssl rsa -noout -modulus -in ./tls.key  | md5sum)" 
+echo "cert modulus - ./tls1.crt : $(openssl x509 -noout -modulus -in ./tls1.crt  | md5sum)"
+echo "key modulus - ./tls1.key : $(openssl rsa -noout -modulus -in ./tls1.key  | md5sum)" 
 
 echo "---------------------------------------------------------------" 
 echo "Verifying Root to Leaf"                   
-openssl verify -no_check_time -CAfile <(cat ./ca.crt) ./tls.crt
+openssl verify -no_check_time -CAfile <(cat ./ca1.crt) ./tls1.crt
+echo "---------------------------------------------------------------" 
+
+for i in {180..1}; do printf "Waiting for Renewal to Finish: $i \r" && sleep 1; done
+
+echo "---------------------------------------------------------------"                                              
+echo "Renewal Finished"                                              
+echo "---------------------------------------------------------------"                                              
+
+kubectl exec -it webapp -- cat /etc/ssl/tls.crt > ./tls2.crt
+kubectl exec -it webapp -- cat /etc/ssl/tls.key > ./tls2.key
+kubectl exec -it webapp -- cat /etc/ssl/ca.crt > ./ca2.crt
+
+echo "---------------------------------------------------------------"                                              
+echo "Getting md5sum and filesize"
+echo "md5sum - ./ca2.crt  : $(md5sum ./ca2.crt) $(stat -c %s ./ca2.crt)"
+echo "Getting SerialNumber"
+echo "$(openssl x509 -in ./ca2.crt  -text -noout | grep -A1  "Serial Number:")"
+echo "---------------------------------------------------------------"        
+echo "Getting md5sum and filesize"
+echo "md5sum - ./tls2.crt : $(md5sum ./tls2.crt) $(stat -c %s ./tls2.crt)"
+echo "Getting SerialNumber"
+echo "$(openssl x509 -in ./tls2.crt  -text -noout | grep -A1  "Serial Number:")"
+echo "---------------------------------------------------------------"
+echo "Getting md5sum and filesize"
+echo "md5sum - ./tls2.key : $(md5sum ./tls2.key) $(stat -c %s ./tls2.key)"
+echo "---------------------------------------------------------------" 
+
+echo "Checking modulus of Certificate and Private Key"
+echo "cert modulus - ./tls2.crt : $(openssl x509 -noout -modulus -in ./tls2.crt  | md5sum)"
+echo "key modulus - ./tls2.key : $(openssl rsa -noout -modulus -in ./tls2.key  | md5sum)" 
+
+echo "---------------------------------------------------------------" 
+echo "Verifying Root to Leaf"                   
+openssl verify -no_check_time -CAfile <(cat ./ca2.crt) ./tls2.crt
 echo "---------------------------------------------------------------" 
