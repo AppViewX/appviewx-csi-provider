@@ -14,6 +14,7 @@ import (
 const (
 	OBJECT_FORMAT_PEM = "pem"
 	OBJECT_FORMAT_PFX = "pfx"
+	OBJECT_FORMAT_P12 = "p12"
 	OBJECT_FORMAT_JKS = "jks"
 
 	OBJECT_ENCODING_UTF_8   = "utf-8"

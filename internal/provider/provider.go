@@ -429,6 +429,27 @@ func getMountFilesAndObjectVersions(
 		}
 
 		return
+
+	case util.OBJECT_FORMAT_P12:
+		l.Info("objectFormat p12")
+
+		for _, currentSecretContent := range secretContents {
+			pfxContent, password, err := format.GetPfxContentForSecret(currentSecretContent, l)
+			if err != nil {
+				l.Error(fmt.Sprintf("Error in getMountFilesAndObjectVersions while format.GetPfxContentForSecret : %v", err))
+				return nil, nil, fmt.Errorf("error in getMountFilesAndObjectVersions while format.GetPfxContentForSecret : %w", err)
+			}
+			encodedContent, err := util.Encode(pfxContent, encodingFormat, l)
+			if err != nil {
+				l.Error(fmt.Sprintf("Error in getMountFilesAndObjectVersions while  util.Encode : %v", err))
+				return nil, nil, fmt.Errorf("error in getMountFilesAndObjectVersions while  util.Encode : %w", err)
+			}
+
+			files, objectVersions = appendToFilesAndObjectVersions(cfg.FilePermission, encodedContent, "tls.p12", files, objectVersions)
+			files, objectVersions = appendToFilesAndObjectVersions(cfg.FilePermission, []byte(password), "password", files, objectVersions)
+		}
+
+		return
 	case util.OBJECT_FORMAT_JKS:
 		l.Info("objectFormat jks")
 

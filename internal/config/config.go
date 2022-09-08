@@ -104,7 +104,8 @@ func parseParameters(parametersStr string) (Parameters, error) {
 	err = yaml.Unmarshal([]byte(secretsYaml), &m1)
 	if err != nil {
 		fmt.Println("Error in Unmarshalling Yaml to map : ", err)
-		return Parameters{}, fmt.Errorf("Error in parseParameters : Error in Unmarshalling Yaml to map : %w", err)
+		return Parameters{},
+			fmt.Errorf("Error in parseParameters : Error in Unmarshalling Yaml to map : %w", err)
 	}
 
 	c, err := json.Marshal(m1)
@@ -132,11 +133,13 @@ func (c *Config) validate() error {
 		c.Parameters.ObjectFormat = util.OBJECT_FORMAT_PEM
 	} else if strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PEM &&
 		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_PFX &&
+		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_P12 &&
 		strings.ToLower(c.Parameters.ObjectFormat) != util.OBJECT_FORMAT_JKS {
 
-		return fmt.Errorf("%s : is not a valid ObjectFormat only %s,%s,%s are supported",
+		return fmt.Errorf("%s : is not a valid ObjectFormat only %s,%s,%s,%s are supported",
 			c.Parameters.ObjectFormat,
-			util.OBJECT_FORMAT_PEM, util.OBJECT_FORMAT_PFX, util.OBJECT_FORMAT_JKS)
+			util.OBJECT_FORMAT_PEM, util.OBJECT_FORMAT_PFX,
+			util.OBJECT_FORMAT_P12, util.OBJECT_FORMAT_JKS)
 	}
 
 	if len(c.Parameters.ObjectEncoding) == 0 {

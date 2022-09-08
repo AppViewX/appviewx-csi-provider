@@ -156,7 +156,7 @@ metadata:
 spec:
   provider: appviewx
   parameters:
-    objectFormat: pem    # pem, pfx, jks
+    objectFormat: pem    # pem, pfx, p12, jks
     objectEncoding: utf-8     # utf-8, hex,  base64 
     objects: |
       - commonName: cert-default-leaf-casetting-default-ca-casetting-default-selfsigned.appviewx.com
