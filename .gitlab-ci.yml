@@ -22,10 +22,11 @@ build_binary:
          echo "1) ------------ Generating Binary  "
          export GOPROXY=${GOPROXY_URL} 
 
-         sed -ie "s/main.gitCommit=[a-z0-9A-Z]*/main.gitCommit=${CI_COMMIT_SHORT_SHA}/" Dockerfile
+         sed -ie "s/main.gitCommit=[a-z0-9A-Z]*/main.gitCommit=${CI_COMMIT_SHA}/" Dockerfile
          sed -ie "s/main.versions=[a-z0-9A-Z]*/main.versions=${CI_COMMIT_REF_NAME}/" Dockerfile
          
-         make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${ARTIFACT_NAME}
+         cat Dockerfile
+         make build image REGISTRY_NAME=docker.io/demoappviewx IMAGE_NAME=${PROFILE_NAME} VERSION=${CI_COMMIT_REF_NAME}
          
          echo "docker save demoappviewx/${PROFILE_NAME}:${ARTIFACT_NAME} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}"
          docker save demoappviewx/${PROFILE_NAME}:${ARTIFACT_NAME} > ${ARTIFACT_NAME}_${CI_COMMIT_REF_NAME}
