@@ -1,0 +1,27 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nginx-{{ .Values.engine }}
+  namespace: {{ .Release.namespace }}
+  labels:
+    app: nginx
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  serviceAccountName: nginx-{{ .Values.sa }}
+  terminationGracePeriodSeconds: 0
+  containers:
+  - image: docker.mirror.hashicorp.services/nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx
+    volumeMounts:
+    - name: secrets-store-inline
+      mountPath: "/mnt/secrets-store"
+      readOnly: true
+  volumes:
+    - name: secrets-store-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "vault-{{ .Values.engine }}"
